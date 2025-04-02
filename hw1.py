@@ -76,11 +76,12 @@ def compute_loss(X, y, theta):
 
     n = X.shape[0]
 
-    f_of_x = theta[0]+theta[1]*X
-    x_sec_col = f_of_x[:, 1]
-    # shape: (n, p + 1
-    print( x_sec_col)
-    J=(1/(2*n))*np.sum((x_sec_col-y)**2)
+    # Linear model prediction
+    y_hat = X @ theta  # shape (n,)
+
+    # Compute MSE loss
+    J = (1 / (2 * n)) * np.sum((y_hat - y) ** 2)
+
     ###########################################################################
     pass
     ###########################################################################
@@ -113,7 +114,40 @@ def gradient_descent(X, y, theta, eta, num_iters):
     theta = theta.copy()  # optional: theta outside the function will not change
     J_history = []  # Use a python list to save the loss value in every iteration
     ###########################################################################
-    # TODO: Implement the gradient descent optimization algorithm.            #
+    #threshold = 1e-7  #convergence threshold
+    n,p = X.shape
+
+    for num_of_iterations in range(num_iters):
+        if (num_of_iterations % 1000) == 0:
+            print(f'Iteration {num_of_iterations} completed')
+        grad = np.zeros(p)
+
+        #loop over x points
+        for i in range(n):
+            x_i = X[i]
+            y_i = y[i]
+            y_hat_i = np.dot(theta, x_i)
+            diff_i = y_hat_i - y_i
+
+            for j in range(p):
+                grad[j] += (diff_i * x_i[j])
+
+        # Update theta
+        for j in range(p):
+            theta[j] -= eta * (grad[j]/n)
+
+        #y_hat = X @ theta
+        #diff = y_hat - y
+        #J = (1 / (2 * n)) * np.sum(diff ** 2)
+
+        J_history.append(compute_loss(X, y, theta))
+    """ if num_of_iterations > 0:
+            delta_J = abs(J_history[-2] - J_history[-1])
+
+            if delta_J < threshold:
+                print(f"Stopping early at iteration {num_of_iterations}")
+                break"""
+
     ###########################################################################
     pass
     ###########################################################################
@@ -141,7 +175,13 @@ def compute_pinv(X, y):
 
     pinv_theta = []
     ###########################################################################
-    # TODO: Implement the pseudoinverse algorithm.                            #
+    # X^T transpose
+    X_transpose = np.transpose(X)
+    # (X^T*X)^-1 = a  invers and mult
+    invres_of_mult = np.linalg.inv(X_transpose @ X)
+    # out = a * X^T * y
+    pinv_theta = invres_of_mult @ X_transpose @ y
+
     ###########################################################################
     pass
     ###########################################################################
