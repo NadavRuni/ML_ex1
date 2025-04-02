@@ -114,7 +114,7 @@ def gradient_descent(X, y, theta, eta, num_iters):
     theta = theta.copy()  # optional: theta outside the function will not change
     J_history = []  # Use a python list to save the loss value in every iteration
     ###########################################################################
-    #threshold = 1e-7  #convergence threshold
+    threshold = 1e-8  #convergence threshold
     n,p = X.shape
 
     for num_of_iterations in range(num_iters):
@@ -141,12 +141,7 @@ def gradient_descent(X, y, theta, eta, num_iters):
         #J = (1 / (2 * n)) * np.sum(diff ** 2)
 
         J_history.append(compute_loss(X, y, theta))
-    """ if num_of_iterations > 0:
-            delta_J = abs(J_history[-2] - J_history[-1])
 
-            if delta_J < threshold:
-                print(f"Stopping early at iteration {num_of_iterations}")
-                break"""
 
     ###########################################################################
     pass
@@ -212,7 +207,43 @@ def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
     theta = theta.copy()  # optional: theta outside the function will not change
     J_history = []  # Use a python list to save the loss value in every iteration
     ###########################################################################
-    # TODO: Implement the gradient descent with stop condition optimization algorithm.  #
+    n, p = X.shape
+
+    for num_of_iterations in range(max_iter):
+        if (num_of_iterations % 1000) == 0:
+            print(f'Iteration {num_of_iterations} completed')
+        grad = np.zeros(p)
+
+        # loop over x points
+        for i in range(n):
+            x_i = X[i]
+            y_i = y[i]
+            y_hat_i = np.dot(theta, x_i)
+            diff_i = y_hat_i - y_i
+
+            for j in range(p):
+                grad[j] += (diff_i * x_i[j])
+
+        # Update theta
+        for j in range(p):
+            theta[j] -= eta * (grad[j] / n)
+
+        # y_hat = X @ theta
+        # diff = y_hat - y
+        # J = (1 / (2 * n)) * np.sum(diff ** 2)
+
+        if num_of_iterations > 0:
+            delta_J = abs(J_history[-2] - J_history[-1])
+
+            if delta_J < epsilon:
+                print(f"Stopping early at iteration {num_of_iterations}")
+
+                # Fill the rest of J_history to match max_iter length
+                last_J = J_history[-1]
+                J_history.extend([last_J] * (max_iter - len(J_history)))
+
+                break
+
     ###########################################################################
     pass
     ###########################################################################
@@ -240,7 +271,21 @@ def find_best_learning_rate(X_train, y_train, X_val, y_val, iterations):
     etas = [0.00001, 0.00003, 0.0001, 0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 2, 3]
     eta_dict = {}  # {eta_value: validation_loss}
     ###########################################################################
-    # TODO: Implement the function and find the best eta value.             #
+    features = X_train.shape[1] #how many features
+    theta_vector = np.zeros(features) #build the theta vector
+
+    #for each eta return the best theta and the
+    for eta in etas:
+        print(f'eta: {eta}')
+        # Train using gradient descent
+        theta, _ = gradient_descent_stop_condition(X_train, y_train, theta_vector, eta, iterations )
+
+        # Compute loss on validation set
+        loss_with_specific_eta = compute_loss(X_val, y_val, theta)
+
+        # Save to dictionary
+        eta_dict[eta] = loss_with_specific_eta
+
     ###########################################################################
     pass
     ###########################################################################
