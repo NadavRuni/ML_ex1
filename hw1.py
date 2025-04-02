@@ -21,7 +21,8 @@ def preprocess(X, y):
     - y: The Standardized true labels.
     """
     ###########################################################################
-    # TODO: Implement the normalization function.                             #
+    X = (X - X.mean(axis=0)) / X.std(axis=0)
+    y = (y - y.mean()) / y.std()
     ###########################################################################
     pass
     ###########################################################################
@@ -42,7 +43,12 @@ def apply_bias_trick(X):
         zeroth position (n instances over p+1).
     """
     ###########################################################################
-    # TODO: Implement the bias trick by adding a column of ones to the data.                             #
+    if X.ndim == 1:
+        X = X.reshape(-1, 1)
+
+        # Create column of ones
+    ones = np.insert(X, 0, 1, axis=1)
+    X = ones
     ###########################################################################
     pass
     ###########################################################################
@@ -67,7 +73,14 @@ def compute_loss(X, y, theta):
 
     J = 0  # We use J for the loss.
     ###########################################################################
-    # TODO: Implement the MSE loss function.                                  #
+
+    n = X.shape[0]
+
+    f_of_x = theta[0]+theta[1]*X
+    x_sec_col = f_of_x[:, 1]
+    # shape: (n, p + 1
+    print( x_sec_col)
+    J=(1/(2*n))*np.sum((x_sec_col-y)**2)
     ###########################################################################
     pass
     ###########################################################################
