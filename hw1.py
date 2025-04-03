@@ -114,33 +114,23 @@ def gradient_descent(X, y, theta, eta, num_iters):
     theta = theta.copy()  # optional: theta outside the function will not change
     J_history = []  # Use a python list to save the loss value in every iteration
     ###########################################################################
-    threshold = 1e-8  #convergence threshold
-    n,p = X.shape
+    n = len(y)
 
-    for num_of_iterations in range(num_iters):
-        if (num_of_iterations % 1000) == 0:
-            print(f'Iteration {num_of_iterations} completed')
-        grad = np.zeros(p)
+    for i in range(num_iters):
+        if i % 1000 == 0:
+            print(f'Iteration {i} completed')
+        y_hat = X @ theta
 
-        #loop over x points
-        for i in range(n):
-            x_i = X[i]
-            y_i = y[i]
-            y_hat_i = np.dot(theta, x_i)
-            diff_i = y_hat_i - y_i
+        diff = y_hat - y  #  The error (how much we missed by)
+        grad = (X.T @ diff) / n  # gradient
 
-            for j in range(p):
-                grad[j] += (diff_i * x_i[j])
 
-        # Update theta
-        for j in range(p):
-            theta[j] -= eta * (grad[j]/n)
 
-        #y_hat = X @ theta
-        #diff = y_hat - y
-        #J = (1 / (2 * n)) * np.sum(diff ** 2)
+        theta -= eta * grad
 
-        J_history.append(compute_loss(X, y, theta))
+        J = (1 / (2 * n)) * np.dot(diff, diff)  # compute_loss
+        J_history.append(J)
+
 
 
     ###########################################################################
@@ -172,8 +162,10 @@ def compute_pinv(X, y):
     ###########################################################################
     # X^T transpose
     X_transpose = np.transpose(X)
+
     # (X^T*X)^-1 = a  invers and mult
     invres_of_mult = np.linalg.inv(X_transpose @ X)
+
     # out = a * X^T * y
     pinv_theta = invres_of_mult @ X_transpose @ y
 
@@ -207,42 +199,29 @@ def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
     theta = theta.copy()  # optional: theta outside the function will not change
     J_history = []  # Use a python list to save the loss value in every iteration
     ###########################################################################
-    n, p = X.shape
+    n = X.shape[0]
 
-    for num_of_iterations in range(max_iter):
-        if (num_of_iterations % 1000) == 0:
-            print(f'Iteration {num_of_iterations} completed')
-        grad = np.zeros(p)
+    for iteration in range(max_iter):
+        if iteration % 1000 == 0:
+            print(f'Iteration {iteration} completed')
 
-        # loop over x points
-        for i in range(n):
-            x_i = X[i]
-            y_i = y[i]
-            y_hat_i = np.dot(theta, x_i)
-            diff_i = y_hat_i - y_i
+        y_hat = X @ theta
+        diff = y_hat - y
+        grad = (X.T @ diff) / n
 
-            for j in range(p):
-                grad[j] += (diff_i * x_i[j])
+        theta -= eta * grad
 
-        # Update theta
-        for j in range(p):
-            theta[j] -= eta * (grad[j] / n)
+        loss = (1 / (2 * n)) * np.sum(diff ** 2)
+        J_history.append(loss)
 
-        # y_hat = X @ theta
-        # diff = y_hat - y
-        # J = (1 / (2 * n)) * np.sum(diff ** 2)
+        # Early stopping
+        if iteration > 0 and abs(J_history[-1] - J_history[-2]) < epsilon:
+            print(f"Stopping early at iteration {iteration}")
 
-        if num_of_iterations > 0:
-            delta_J = abs(J_history[-2] - J_history[-1])
-
-            if delta_J < epsilon:
-                print(f"Stopping early at iteration {num_of_iterations}")
-
-                # Fill the rest of J_history to match max_iter length
-                last_J = J_history[-1]
-                J_history.extend([last_J] * (max_iter - len(J_history)))
-
-                break
+            #  pad J_history for full length
+            last_J = J_history[-1]
+            J_history.extend([last_J] * (max_iter - len(J_history)))
+            break
 
     ###########################################################################
     pass
@@ -271,10 +250,10 @@ def find_best_learning_rate(X_train, y_train, X_val, y_val, iterations):
     etas = [0.00001, 0.00003, 0.0001, 0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 2, 3]
     eta_dict = {}  # {eta_value: validation_loss}
     ###########################################################################
-    features = X_train.shape[1] #how many features
-    theta_vector = np.zeros(features) #build the theta vector
+    features_num = X_train.shape[1] #how many features
+    theta_vector = np.zeros(features_num) #build the theta vector
 
-    #for each eta return the best theta and the
+    #for each eta return the best theta and the min loss
     for eta in etas:
         print(f'eta: {eta}')
         # Train using gradient descent
@@ -283,7 +262,7 @@ def find_best_learning_rate(X_train, y_train, X_val, y_val, iterations):
         # Compute loss on validation set
         loss_with_specific_eta = compute_loss(X_val, y_val, theta)
 
-        # Save to dictionary
+        # Save the loss of each eta
         eta_dict[eta] = loss_with_specific_eta
 
     ###########################################################################
@@ -313,8 +292,36 @@ def forward_feature_selection(X_train, y_train, X_val, y_val, best_eta, iteratio
     - selected_features: A list of selected top 5 feature indices
     """
     selected_features = []
-    #####c######################################################################
-    # TODO: Implement the function and find the best eta value.             #
+    total_features = X_train.shape[1]
+    ###########################################################################
+    while len(selected_features) < 5:
+        the_best_feature = None
+        lowest_loss = float('inf')
+
+        for i in range(total_features):
+            if i in selected_features:
+                continue
+
+            chosen_features = selected_features+[i]
+
+            sub_X_train = X_train[:, chosen_features]
+            sub_X_val = X_val[:, chosen_features]
+
+            X_train_bias = apply_bias_trick(sub_X_train)
+            X_val_bias = apply_bias_trick(sub_X_val)
+
+            theta = np.zeros(X_train_bias.shape[1])
+            theta ,_ = gradient_descent(X_train_bias, y_train, theta, best_eta, iterations)
+
+            loss = compute_loss(X_val_bias, y_val, theta)
+
+            if loss < lowest_loss:
+                lowest_loss = loss
+                the_best_feature = i
+
+        selected_features.append(the_best_feature)
+
+
     ###########################################################################
     pass
     ###########################################################################
@@ -337,7 +344,24 @@ def create_square_features(df):
 
     df_poly = df.copy()
     ###########################################################################
-    # TODO: Implement the function to add polynomial features                 #
+    squared_features = pd.DataFrame({
+        f"{col}^2": df[col] ** 2 for col in df.columns
+    }, index=df.index)
+
+    # Build interaction features
+    interaction_data = {}
+    feature_names = df.columns
+    for i in range(len(feature_names) - 1):
+        for j in range(i + 1, len(feature_names)):
+            col1 = feature_names[i]
+            col2 = feature_names[j]
+            interaction_data[f"{col1}*{col2}"] = df[col1] * df[col2]
+
+    interaction_features = pd.DataFrame(interaction_data, index=df.index)
+
+    # Concatenate everything into df_poly
+    df_poly = pd.concat([df_poly, squared_features, interaction_features], axis=1)
+    df_poly = df_poly.copy()
     ###########################################################################
     pass
     ###########################################################################
